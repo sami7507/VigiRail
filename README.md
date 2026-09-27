@@ -176,7 +176,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## 👤 Author
 
-**samiself07** — [github.com/samiself07](https://github.com/samiself07)
+**Sami** — [github.com/samiself07](https://github.com/sami7507)
 
 ---
 
