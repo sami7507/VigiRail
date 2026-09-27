@@ -4,7 +4,7 @@
 <img src="https://img.shields.io/badge/Indian%20Railways-Predictive%20Maintenance-blue?style=for-the-badge" />
 <img src="https://img.shields.io/badge/Track-Smart%20Automation-green?style=for-the-badge" />
 
-# 🚆 RailGuard AI
+# 🚆 RailGuard
 
 ### Predictive Maintenance System for Indian Railways
 
