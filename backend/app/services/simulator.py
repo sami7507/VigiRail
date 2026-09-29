@@ -1,116 +1,177 @@
 """
-RailGuard AI — Sensor Simulator
-Generates realistic railway sensor readings.
+VigiRail — Sensor simulator.
 
-Normal mode:  random walk within RDSO safe thresholds.
-Failure mode: exponential drift toward danger zone.
+Produces a random-walk sensor stream that stays inside RDSO safe zones, or
+ramps exponentially toward the danger zone when failure simulation is active.
 
-Sensor thresholds (RDSO/2019/CG-06 + IS 3073):
-  Vibration   warn=5 mm/s   danger=8 mm/s
-  Temperature warn=70°C     danger=90°C
-  Acoustic    warn=60 dB    danger=80 dB
-  Track Wear  warn=50%      danger=75%
+Thresholds (RDSO/2019/CG-06, IS 3073, IEC 60721):
+                warn      danger
+  vibration     5 mm/s    8 mm/s
+  temperature   70 °C     90 °C
+  acoustic      60 dB     80 dB
+  wear          50 %      75 %
 """
 
+from __future__ import annotations
+
 import random
-import math
-from datetime import datetime
-from app.models.schemas import SensorReading, BogieStatus, HealthState
+import threading
+
+from app.models.schemas import (
+    BogieStatus,
+    HealthState,
+    MaintenanceItem,
+    SensorReading,
+    Urgency,
+)
+
+BOGIE_LABELS = [
+    "Bogie 1 (Front)",
+    "Bogie 2",
+    "Bogie 3",
+    "Bogie 4",
+    "Bogie 5",
+    "Bogie 6 (Rear)",
+]
 
 
 class SensorSimulator:
-    """Stateful sensor simulator — maintains current sensor values."""
+    """Stateful simulator — one instance per process (see `simulator` below)."""
 
-    BOGIE_LABELS = [
-        "Bogie 1 (Front)", "Bogie 2", "Bogie 3",
-        "Bogie 4", "Bogie 5", "Bogie 6 (Rear)",
-    ]
+    def __init__(self, seed: int | None = None) -> None:
+        self._rng = random.Random(seed)
+        self._lock = threading.Lock()
+        self.reset()
 
-    def __init__(self):
-        # Initial safe values
-        self.vib  = 2.5
-        self.temp = 55.0
-        self.acou = 42.0
-        self.wear = 18.0
-        self.tick = 0
+    def reset(self) -> None:
+        with self._lock:
+            self.vib = 2.5
+            self.temp = 55.0
+            self.acou = 42.0
+            self.wear = 18.0
 
     def next(self, failure_mode: bool) -> SensorReading:
-        """Generate the next sensor reading."""
-        self.tick += 1
+        with self._lock:
+            if failure_mode:
+                # Accelerating failure ramp toward the danger zone
+                # (wear stands in for cumulative damage, so it climbs fastest).
+                self.vib = min(11.5, self.vib + self._rng.uniform(0.5, 1.2))
+                self.temp = min(105.0, self.temp + self._rng.uniform(1.2, 2.5))
+                self.acou = min(95.0, self.acou + self._rng.uniform(1.5, 3.0))
+                self.wear = min(85.0, self.wear + self._rng.uniform(1.0, 2.2))
+            else:
+                # Mean-reverting random walk inside safe limits.
+                self.vib = max(0.5, min(5.0, self.vib + (self._rng.random() - 0.5) * 0.6))
+                self.temp = max(35.0, min(68.0, self.temp + (self._rng.random() - 0.5) * 1.5))
+                self.acou = max(25.0, min(58.0, self.acou + (self._rng.random() - 0.5) * 2.5))
+                self.wear = max(5.0, min(40.0, self.wear + (self._rng.random() - 0.5) * 0.3))
+            return SensorReading(
+                vibration=round(self.vib, 2),
+                temperature=round(self.temp, 1),
+                acoustic=round(self.acou, 1),
+                wear=round(self.wear, 1),
+            )
 
-        if failure_mode:
-            # Exponential ramp toward danger zone
-            self.vib  = min(11.5, self.vib  + random.uniform(0.3, 0.9))
-            self.temp = min(105.0, self.temp + random.uniform(0.8, 1.8))
-            self.acou = min(95.0,  self.acou + random.uniform(1.0, 2.2))
-            self.wear = min(85.0,  self.wear + random.uniform(0.2, 0.6))
-        else:
-            # Random walk with mean reversion toward safe centre
-            self.vib  = max(0.5,  min(5.0,  self.vib  + (random.random() - 0.5) * 0.6))
-            self.temp = max(35.0, min(68.0,  self.temp + (random.random() - 0.5) * 1.5))
-            self.acou = max(25.0, min(58.0,  self.acou + (random.random() - 0.5) * 2.5))
-            self.wear = max(5.0,  min(40.0,  self.wear + (random.random() - 0.5) * 0.3))
-
-        return SensorReading(
-            vibration=round(self.vib, 2),
-            temperature=round(self.temp, 1),
-            acoustic=round(self.acou, 1),
-            wear=round(self.wear, 1),
-        )
-
-    def reset(self):
-        """Reset to safe initial values."""
-        self.vib  = 2.5
-        self.temp = 55.0
-        self.acou = 42.0
-        self.wear = 18.0
+    # ── Bogies ───────────────────────────────────────────────────────
+    @staticmethod
+    def _classify(temp: float) -> HealthState:
+        if temp >= 90:
+            return HealthState.DANGER
+        if temp >= 70:
+            return HealthState.WARN
+        return HealthState.GOOD
 
     def generate_bogies(self, failure_mode: bool) -> list[BogieStatus]:
-        """Generate status for all 6 bogies."""
-        if failure_mode:
-            statuses = [HealthState.DANGER, HealthState.WARN,
-                        HealthState.DANGER, HealthState.WARN,
-                        HealthState.DANGER, HealthState.WARN]
-            base_temps = [89, 72, 91, 70, 88, 67]
-        else:
-            statuses   = [HealthState.GOOD] * 4 + [HealthState.WARN, HealthState.GOOD]
-            base_temps = [52, 49, 54, 51, 68, 55]
-
-        return [
-            BogieStatus(
-                id=f"B{i+1}",
-                label=self.BOGIE_LABELS[i],
-                status=statuses[i],
-                temp=base_temps[i] + random.randint(-3, 3),
+        """Six bogies; bearing temps track the live temperature sensor."""
+        with self._lock:
+            base_temp = self.temp
+        rng = self._rng
+        offsets = [-2, -5, 1, -4, 4, -1]
+        result = []
+        for i, label in enumerate(BOGIE_LABELS):
+            if failure_mode:
+                # Alternating hot/critical pattern under simulated failure.
+                bias = 18 if i % 2 == 0 else 6
+                temp = base_temp + bias + rng.uniform(-2, 4)
+            else:
+                temp = base_temp + offsets[i] + rng.uniform(-2, 2)
+            result.append(
+                BogieStatus(
+                    id=f"B{i + 1}",
+                    label=label,
+                    status=self._classify(temp),
+                    temp=int(round(temp)),
+                )
             )
-            for i in range(6)
-        ]
+        return result
 
-    def get_maintenance(self, failure_mode: bool, sensors: SensorReading) -> list[dict]:
-        """Return contextual maintenance recommendations."""
-        if failure_mode:
+    # ── Maintenance recommendations ──────────────────────────────────
+    @staticmethod
+    def get_maintenance(failure_mode: bool, sensors: SensorReading) -> list[MaintenanceItem]:
+        """Contextual work orders derived from the live readings (no emojis —
+        the UI maps urgency to icons)."""
+        if failure_mode or sensors.vibration >= 8 or sensors.temperature >= 90:
             return [
-                {"title": "STOP TRAIN — Emergency Inspection",
-                 "detail": "Critical vibration and heat. Immediate stop required.",
-                 "urgency": "urgent", "icon": "🚨"},
-                {"title": "Cool Down Axle Bearings",
-                 "detail": "Temperature >85°C on Bogies 1,3,5. Apply coolant now.",
-                 "urgency": "urgent", "icon": "🔥"},
-                {"title": "Replace Wheel Bearings B1, B3",
-                 "detail": "4-hour service window required. Part no. WB-4471.",
-                 "urgency": "today", "icon": "🔧"},
+                MaintenanceItem(
+                    title="Stop train — emergency inspection",
+                    detail="Vibration or bearing temperature beyond critical limits. Halt at the next safe halt.",
+                    urgency=Urgency.URGENT,
+                ),
+                MaintenanceItem(
+                    title="Cool axle bearings",
+                    detail="Bearing temperature above 90 °C. Inspect and cool bogies before resuming.",
+                    urgency=Urgency.URGENT,
+                ),
+                MaintenanceItem(
+                    title="Replace wheel bearing set",
+                    detail="Order bearing set WB-4471; allow a 4-hour service window.",
+                    urgency=Urgency.SOON,
+                ),
             ]
-        items = [{"title": "Wheel Inspection",
-                  "detail": "All wheels within safe limits.", "urgency": "done", "icon": "✅"}]
-        if sensors.wear > 30:
-            items.append({"title": "Lubricate Axle Bearings",
-                          "detail": "Friction elevated. Service within 7 days.",
-                          "urgency": "soon", "icon": "🔩"})
-        items.append({"title": "Brake Pad Measurement",
-                      "detail": "Pads at ~69% life. Check before next long run.",
-                      "urgency": "planned", "icon": "🔍"})
+
+        items: list[MaintenanceItem] = []
+        if sensors.vibration >= 5:
+            items.append(
+                MaintenanceItem(
+                    title="Inspect wheel bearings",
+                    detail="Vibration approaching the 5 mm/s advisory limit. Check bearing clearance.",
+                    urgency=Urgency.SOON,
+                )
+            )
+        if sensors.temperature >= 70:
+            items.append(
+                MaintenanceItem(
+                    title="Check axle-box lubrication",
+                    detail="Bearing temperature in the advisory band. Regrease at the next depot.",
+                    urgency=Urgency.SOON,
+                )
+            )
+        if sensors.wear >= 50:
+            items.append(
+                MaintenanceItem(
+                    title="Rail / pad wear measurement",
+                    detail="Wear above 50%. Schedule ultrasonic measurement this week.",
+                    urgency=Urgency.SOON,
+                )
+            )
+        items.append(
+            MaintenanceItem(
+                title="Routine brake-pad measurement",
+                detail="Next scheduled check before the following long-distance run.",
+                urgency=Urgency.PLANNED,
+            )
+        )
+        if not any(i.urgency == Urgency.URGENT for i in items) and len(items) == 1:
+            items.insert(
+                0,
+                MaintenanceItem(
+                    title="All systems within limits",
+                    detail="No corrective work required — continue routine monitoring.",
+                    urgency=Urgency.OK,
+                ),
+            )
         return items
 
 
-# Singleton used across the app
+# Imported by API routes and tests.
 simulator = SensorSimulator()
