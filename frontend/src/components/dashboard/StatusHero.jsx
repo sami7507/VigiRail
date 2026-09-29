@@ -1,75 +1,75 @@
-/**
- * Big top status panel — most important component.
- * Shows current train, state (GOOD/WARN/DANGER), health ring.
- */
-import React, { useEffect, useRef } from 'react';
+/** Hero status banner with animated health ring. */
+import React from 'react';
 import { useSensor } from '../../context/SensorContext';
-import { stateColor, stateBg, stateBorder, stateLabel, stateEmoji } from '../../utils/helpers';
+import Icon from '../Icon';
+import { stateDesc, stateLabel } from '../../lib/helpers';
 
-function drawRing(canvas, pct, col) {
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, 110, 110);
-  ctx.beginPath(); ctx.arc(55, 55, 46, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(255,255,255,.06)'; ctx.lineWidth = 9; ctx.stroke();
-  const ang = (pct / 100) * Math.PI * 2 - Math.PI / 2;
-  ctx.beginPath(); ctx.arc(55, 55, 46, -Math.PI / 2, ang);
-  ctx.strokeStyle = col; ctx.lineWidth = 9; ctx.lineCap = 'round'; ctx.stroke();
+const TONE = { good: 'var(--green)', warn: 'var(--amber)', danger: 'var(--red)' };
+const ICON = { good: 'checkCircle', warn: 'alertTriangle', danger: 'alertTriangle' };
+
+function HealthRing({ value, tone }) {
+  const radius = 48;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference * (1 - Math.min(1, Math.max(0, value / 100)));
+  return (
+    <div className="health-ring" aria-label={`Health ${value}%`}>
+      <svg viewBox="0 0 116 116">
+        <circle className="ring-bg" cx="58" cy="58" r={radius} />
+        <circle
+          className="ring-fg"
+          cx="58"
+          cy="58"
+          r={radius}
+          stroke={tone}
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+        />
+      </svg>
+      <div className="health-ring-label">
+        <span className="health-ring-value" style={{ color: tone }}>
+          {value}
+        </span>
+        <span className="health-ring-cap">Health</span>
+      </div>
+    </div>
+  );
 }
 
 export default function StatusHero() {
-  const { data, simMode, selectedTrain } = useSensor();
-  const ringRef = useRef(null);
-
-  const state   = simMode ? 'danger' : (data?.state || 'good');
-  const health  = data?.health_score ?? 0;
-  const col     = stateColor(state);
-  const fp      = data?.failure_probability ?? 0;
-
-  useEffect(() => { drawRing(ringRef.current, health, col); }, [health, col]);
-
-  const msgMap = {
-    good:   'All systems operating normally. No immediate action required.',
-    warn:   '⚠️ Elevated readings detected. Schedule maintenance within 48 hours.',
-    danger: '🚨 CRITICAL: Multiple sensors in danger zone. Immediate stop required!',
-  };
+  const { data, simulating } = useSensor();
+  const state = simulating ? 'danger' : data?.state || 'good';
+  const tone = TONE[state];
+  const health = data?.health_score ?? 0;
 
   return (
-    <div style={{
-      borderRadius: 16, padding: '26px 30px', marginBottom: 18,
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      gap: 18, flexWrap: 'wrap',
-      background: stateBg(state), border: `1px solid ${stateBorder(state)}`,
-      transition: 'all .6s',
-      animation: state === 'danger' ? 'danger 2s ease-in-out infinite' : 'fadeUp .4s ease',
-    }}>
-      <div>
-        <div style={{ fontSize: 12, color: 'var(--mt)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>
-          🚆 TRAIN {selectedTrain} STATUS:
+    <section className={`hero is-${state}`}>
+      <div style={{ minWidth: 0, flex: '1 1 320px' }}>
+        <div className="hero-kicker">
+          <Icon name="train" size={14} />
+          Train {data?.train_id || '—'} · {data?.train?.name || 'Connecting'}
         </div>
-        <div style={{ fontFamily: 'var(--fh)', fontSize: 30, fontWeight: 800, color: col, display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-          <span>{stateEmoji(state)}</span>
-          <span>{stateLabel(state)}</span>
-        </div>
-        <div style={{ fontSize: 16, lineHeight: 1.5, maxWidth: 520, color: 'var(--tx)' }}>
-          {simMode ? '🔴 Failure simulation is active — sensors are reading danger-zone values.' : msgMap[state]}
-        </div>
-        <div style={{ marginTop: 10, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13, color: 'var(--mt)' }}>
-            Failure Probability: <b style={{ color: col }}>{fp}%</b>
+        <h2 className="hero-title" style={{ color: tone }}>
+          <Icon name={ICON[state]} size={26} />
+          {stateLabel(state)}
+        </h2>
+        <p className="hero-desc">
+          {simulating
+            ? 'Failure simulation engaged — the sensor stream is being driven past critical thresholds for training purposes.'
+            : data?.alert_message || 'Waiting for the first telemetry reading…'}
+        </p>
+        <div className="hero-meta">
+          <span className="hero-meta-item">
+            Failure risk <b style={{ color: tone }}>{data?.failure_probability ?? '—'}%</b>
           </span>
-          <span style={{ fontSize: 13, color: 'var(--mt)' }}>
-            Health Score: <b style={{ color: col }}>{health}%</b>
+          <span className="hero-meta-item">
+            Confidence <b>{data?.model_confidence ?? '—'}%</b>
+          </span>
+          <span className="hero-meta-item">
+            Service in <b>{data?.days_until_service ?? '—'} d</b>
           </span>
         </div>
       </div>
-      <div style={{ position: 'relative', width: 110, height: 110, flexShrink: 0 }}>
-        <canvas ref={ringRef} width={110} height={110} />
-        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center' }}>
-          <div style={{ fontFamily: 'var(--fh)', fontSize: 22, fontWeight: 800, color: col }}>{health}%</div>
-          <div style={{ fontSize: 9, color: 'var(--mt)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Health</div>
-        </div>
-      </div>
-    </div>
+      <HealthRing value={health} tone={tone} />
+    </section>
   );
 }

@@ -1,62 +1,62 @@
-/** Train selection grid — respects Operator's 2-train limit */
+/** Train picker + at-a-glance service facts. */
 import React, { useEffect, useState } from 'react';
 import { useSensor } from '../../context/SensorContext';
-import { useAuth } from '../../context/AuthContext';
-import { fetchTrains } from '../../utils/api';
-
-const OPERATOR_TRAINS = ['12951', '12002'];
+import { fetchTrains } from '../../lib/api';
+import Icon from '../Icon';
 
 export default function TrainSelector() {
-  const { selectedTrain, setSelectedTrain } = useSensor();
-  const { user } = useAuth();
+  const { selectedTrain, selectTrain, data } = useSensor();
   const [trains, setTrains] = useState([]);
 
   useEffect(() => {
-    fetchTrains().then(d => {
-      let list = d.trains || [];
-      if (user?.role === 'Operator') {
-        list = list.filter(t => OPERATOR_TRAINS.includes(t.no));
-      }
-      setTrains(list);
-    }).catch(() => {});
-  }, [user]);
+    fetchTrains()
+      .then((res) => setTrains(res.trains || []))
+      .catch(() => setTrains([]));
+  }, []);
 
-  const TYPE_COLORS = { Rajdhani: '#3b82f6', Shatabdi: '#f59e0b', Express: '#ec4899', 'Garib Rath': '#6366f1', 'Vande Bharat': '#22c55e' };
+  const current = trains.find((t) => t.number === selectedTrain) || data?.train;
+  const facts = current
+    ? [
+        { icon: 'route', label: `${current.from} → ${current.to}` },
+        { icon: 'building', label: current.zone_code || current.zone },
+        { icon: 'train', label: current.rake_type || current.type },
+        { icon: 'clock', label: `${current.avg_speed_kmh} km/h avg` },
+      ]
+    : [];
 
   return (
-    <div style={{ marginBottom: 18 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.12em', color: 'var(--mt)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-        {user?.role === 'Operator' ? `Your Assigned Trains (${trains.length})` : 'Select Train to Monitor'}
-        <div style={{ flex: 1, height: 1, background: 'var(--bdr)' }} />
+    <div className="train-bar">
+      <div className="train-bar-left">
+        <div className="train-select">
+          <label className="label" htmlFor="train-select" style={{ marginBottom: 5 }}>
+            Service under monitoring
+          </label>
+          <select
+            id="train-select"
+            className="select"
+            value={selectedTrain}
+            onChange={(e) => selectTrain(e.target.value)}
+          >
+            {(trains.length ? trains : [{ number: selectedTrain, name: 'Loading fleet…' }]).map((train) => (
+              <option key={train.number} value={train.number}>
+                {train.number} · {train.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="train-facts">
+          {facts.map((fact) => (
+            <span key={fact.label} className="fact">
+              <Icon name={fact.icon} size={12} />
+              <b>{fact.label}</b>
+            </span>
+          ))}
+        </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px,1fr))', gap: 9 }}>
-        {trains.map((t, i) => {
-          const col = TYPE_COLORS[t.type] || '#4199ff';
-          const sel = selectedTrain === t.no;
-          return (
-            <div key={t.no}
-              onClick={() => setSelectedTrain(t.no)}
-              style={{
-                background: sel ? `${col}12` : 'var(--s1)',
-                border: `1px solid ${sel ? col + '55' : 'var(--bdr)'}`,
-                borderRadius: 12, padding: '13px 15px', cursor: 'pointer',
-                transition: 'all .22s', display: 'flex', alignItems: 'center', gap: 11,
-                animationDelay: `${i * .04}s`, animation: 'fadeUp .3s ease both',
-              }}
-              onMouseEnter={e => { if (!sel) e.currentTarget.style.borderColor = 'var(--bdh)'; }}
-              onMouseLeave={e => { if (!sel) e.currentTarget.style.borderColor = 'var(--bdr)'; }}
-            >
-              <div style={{ width: 38, height: 38, borderRadius: 9, background: `${col}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, flexShrink: 0 }}>🚆</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: col, fontFamily: 'var(--fm)', marginBottom: 1 }}>{t.no}</div>
-                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 148 }}>{t.name}</div>
-                <div style={{ fontSize: 10, color: 'var(--mt)', marginTop: 1 }}>{t.zone} Zone</div>
-              </div>
-              <div style={{ padding: '3px 8px', borderRadius: 7, fontSize: 9, fontWeight: 700, background: `${col}22`, color: col, textTransform: 'uppercase', letterSpacing: '.04em', flexShrink: 0 }}>{t.type}</div>
-            </div>
-          );
-        })}
-      </div>
+      <span className="badge badge-good">
+        <span className="dot dot-live" />
+        Live · 2 s
+      </span>
     </div>
   );
 }

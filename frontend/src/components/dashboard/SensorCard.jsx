@@ -1,46 +1,55 @@
-/** Live sensor readings with animated progress bars */
+/** Live sensor readings with threshold-aware meters. */
 import React from 'react';
 import { useSensor } from '../../context/SensorContext';
-import { sensorColor } from '../../utils/helpers';
 import Card from '../common/Card';
+import { thresholdColor } from '../../lib/helpers';
 
-function SensorRow({ label, desc, value, unit, max, warn, dng }) {
-  const col = sensorColor(value ?? 0, warn, dng);
-  const pct = Math.min(100, ((value ?? 0) / max) * 100);
+const SENSORS = [
+  { key: 'vibration', name: 'Vibration', desc: 'Wheel bearing shake', unit: 'mm/s', max: 12, warn: 5, danger: 8, digits: 2 },
+  { key: 'temperature', name: 'Bearing temperature', desc: 'Axle-box heat', unit: '°C', max: 120, warn: 70, danger: 90, digits: 1 },
+  { key: 'acoustic', name: 'Acoustic emission', desc: 'Abnormal noise level', unit: 'dB', max: 100, warn: 60, danger: 80, digits: 1 },
+  { key: 'wear', name: 'Component wear', desc: 'Rail / pad condition', unit: '%', max: 100, warn: 50, danger: 75, digits: 1 },
+];
+
+function SensorRow({ config, value }) {
+  const raw = value ?? 0;
+  const color = thresholdColor(raw, config.warn, config.danger);
+  const ratio = Math.min(100, (raw / config.max) * 100);
+
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+    <div className="meter">
+      <div className="meter-head">
         <div>
-          <div style={{ fontSize: 14, fontWeight: 500 }}>{label}</div>
-          <div style={{ fontSize: 11, color: 'var(--mt)' }}>{desc}</div>
+          <div className="meter-name">{config.name}</div>
+          <div className="meter-desc">{config.desc}</div>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <span style={{ fontFamily: 'var(--fm)', fontSize: 20, fontWeight: 600, color: col }}>
-            {value ?? '—'}
-          </span>
-          <span style={{ fontSize: 11, color: 'var(--mt)', marginLeft: 3 }}>{unit}</span>
+        <div className="meter-value" style={{ color }}>
+          {value ?? '—'}
+          <span className="meter-unit">{config.unit}</span>
         </div>
       </div>
-      <div style={{ height: 9, background: 'var(--s3)', borderRadius: 5, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: col, borderRadius: 5, transition: 'width .8s cubic-bezier(.4,0,.2,1), background .5s' }} />
+      <div className="meter-track">
+        <div className="meter-fill" style={{ width: `${ratio}%`, background: color }} />
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--dim)', marginTop: 3, fontFamily: 'var(--fm)' }}>
-        <span>Safe</span><span>⚠ {warn}</span><span>🚨 {dng}</span><span>{max}</span>
+      <div className="meter-scale">
+        <span>0</span>
+        <span className="warn">advisory {config.warn}</span>
+        <span className="danger">critical {config.danger}</span>
+        <span>{config.max}</span>
       </div>
-      <div style={{ height: 1, background: 'var(--bdr)', margin: '8px 0 0' }} />
     </div>
   );
 }
 
 export default function SensorCard() {
   const { data } = useSensor();
-  const s = data?.sensors || {};
+  const sensors = data?.sensors || {};
+
   return (
-    <Card title="Live Sensor Readings" icon="📡">
-      <SensorRow label="Vibration"    desc="Wheel bearing shake"      value={s.vibration}   unit="mm/s" max={12}  warn={5}  dng={8} />
-      <SensorRow label="Temperature"  desc="Axle bearing heat"        value={s.temperature} unit="°C"   max={120} warn={70} dng={90} />
-      <SensorRow label="Sound Level"  desc="Unusual noise detection"  value={s.acoustic}    unit="dB"   max={100} warn={60} dng={80} />
-      <SensorRow label="Track Wear"   desc="Rail surface condition"   value={s.wear}        unit="%"    max={100} warn={50} dng={75} />
+    <Card title="Live sensor readings" icon="activity">
+      {SENSORS.map((config) => (
+        <SensorRow key={config.key} config={config} value={sensors[config.key]} />
+      ))}
     </Card>
   );
 }

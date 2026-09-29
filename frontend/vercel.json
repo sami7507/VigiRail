@@ -1,0 +1,38 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://vigirail-api.onrender.com/api/:path*"
+    },
+    {
+      "source": "/healthz",
+      "destination": "https://vigirail-api.onrender.com/healthz"
+    },
+    {
+      "source": "/docs",
+      "destination": "https://vigirail-api.onrender.com/docs"
+    },
+    {
+      "source": "/docs/:path*",
+      "destination": "https://vigirail-api.onrender.com/docs/:path*"
+    },
+    {
+      "source": "/openapi.json",
+      "destination": "https://vigirail-api.onrender.com/openapi.json"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
+  ]
+}
