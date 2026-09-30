@@ -1,6 +1,29 @@
-venv/
+# Python
 __pycache__/
-.env
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Node
 node_modules/
-dist/
-build/
+frontend/dist/
+frontend/dev-dist/
+*.tsbuildinfo
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# Logs & misc
+*.log
+nohup.out
+coverage/

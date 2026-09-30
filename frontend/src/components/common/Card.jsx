@@ -1,42 +1,20 @@
-/** Reusable dark card wrapper */
+/** Reusable card shell: label header + body. */
 import React from 'react';
+import Icon from '../Icon';
 
-const s = {
-  card: {
-    background: 'var(--s1)',
-    border: '1px solid var(--bdr)',
-    borderRadius: 14,
-    padding: '18px 20px',
-    transition: 'border-color .3s',
-    animation: 'fadeUp .4s ease both',
-  },
-  title: {
-    fontFamily: 'var(--fh)',
-    fontSize: 10,
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    letterSpacing: '.1em',
-    color: 'var(--mt)',
-    marginBottom: 14,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 7,
-  },
-};
-
-export default function Card({ title, icon, children, style = {} }) {
+export default function Card({ title, icon, action, children, className = '', flush = false, ...rest }) {
   return (
-    <div style={{ ...s.card, ...style }}
-      onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--bdh)'}
-      onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--bdr)'}
-    >
+    <section className={`card ${flush ? 'card-flush' : ''} ${className}`} {...rest}>
       {title && (
-        <div style={s.title}>
-          {icon && <span style={{ fontSize: 16 }}>{icon}</span>}
-          {title}
-        </div>
+        <header className="card-header">
+          <h3 className="card-title">
+            {icon && <Icon name={icon} size={15} />}
+            {title}
+          </h3>
+          {action}
+        </header>
       )}
-      {children}
-    </div>
+      <div className="card-body">{children}</div>
+    </section>
   );
 }

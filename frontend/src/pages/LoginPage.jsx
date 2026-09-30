@@ -1,166 +1,198 @@
 /**
- * RailGuard AI — Login Page
- * Split-screen: left branding panel + right login form with demo accounts.
+ * VigiRail — login screen.
+ * Split layout: product panel (desktop) + sign-in card with demo accounts.
  */
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import Icon from '../components/Icon';
+import { roleColor } from '../lib/helpers';
 
 const DEMO_ACCOUNTS = [
-  { username: 'admin',    password: 'admin123', role: 'Admin',    color: '#1a5ef5', initials: 'AD' },
-  { username: 'engineer', password: 'eng456',   role: 'Engineer', color: '#10d978', initials: 'EN' },
-  { username: 'operator', password: 'ops789',   role: 'Operator', color: '#f5a623', initials: 'OP' },
-  { username: 'inspector',password: 'insp321',  role: 'Inspector',color: '#a855f7', initials: 'IN' },
+  { username: 'admin', password: 'admin123', role: 'Admin' },
+  { username: 'engineer', password: 'eng456', role: 'Engineer' },
+  { username: 'operator', password: 'ops789', role: 'Operator' },
+  { username: 'inspector', password: 'insp321', role: 'Inspector' },
 ];
 
-/* ── Inline styles ── */
-const S = {
-  screen:    { minHeight: '100vh', display: 'flex', alignItems: 'stretch', background: 'var(--bg)', overflow: 'hidden', position: 'relative' },
-  left:      { flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '60px 56px', background: 'rgba(10,17,31,.95)', borderRight: '1px solid var(--bdr)', position: 'relative' },
-  right:     { width: 460, flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '48px 44px', background: 'var(--s1)' },
-  logoRow:   { display: 'flex', alignItems: 'center', gap: 14, marginBottom: 48 },
-  logoIco:   { width: 62, height: 62, borderRadius: 18, background: 'var(--acc)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, boxShadow: '0 8px 32px rgba(26,94,245,.45)' },
-  brand:     { fontFamily: 'var(--fh)', fontSize: 28, fontWeight: 800, color: 'var(--tx)' },
-  brandSub:  { fontSize: 11, color: 'var(--mt)', textTransform: 'uppercase', letterSpacing: '.12em', marginTop: 2 },
-  headline:  { fontFamily: 'var(--fh)', fontSize: 36, fontWeight: 800, lineHeight: 1.2, marginBottom: 20, maxWidth: 400, color: 'var(--tx)' },
-  desc:      { fontSize: 15, color: 'var(--mt)', lineHeight: 1.7, maxWidth: 380, marginBottom: 36 },
-  statsGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11, maxWidth: 360, marginBottom: 28 },
-  statCard:  { background: 'rgba(255,255,255,.04)', border: '1px solid var(--bdr)', borderRadius: 13, padding: '14px 17px' },
-  statVal:   { fontFamily: 'var(--fh)', fontSize: 22, fontWeight: 800, color: 'var(--blue)', marginBottom: 3 },
-  statLbl:   { fontSize: 11, color: 'var(--mt)' },
-  badges:    { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  badge:     { display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(16,217,120,.08)', border: '1px solid rgba(16,217,120,.2)', borderRadius: 20, padding: '5px 12px', fontSize: 12, color: 'var(--g)', fontWeight: 600 },
-  formHdr:   { textAlign: 'center', marginBottom: 32 },
-  lockIco:   { fontSize: 42, marginBottom: 12 },
-  formTitle: { fontFamily: 'var(--fh)', fontSize: 24, fontWeight: 800, marginBottom: 6, color: 'var(--tx)' },
-  formSub:   { fontSize: 13, color: 'var(--mt)' },
-  sslBadge:  { display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 12, background: 'rgba(16,217,120,.1)', border: '1px solid rgba(16,217,120,.22)', borderRadius: 20, padding: '4px 13px', fontSize: 11, color: 'var(--g)', fontWeight: 600 },
-  errBox:    { background: 'var(--rbg)', border: '1px solid var(--rbd)', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: '#ff9090', marginBottom: 14, textAlign: 'center', animation: 'fadeIn .3s ease' },
-  fieldGrp:  { marginBottom: 16 },
-  label:     { display: 'block', fontSize: 11, color: 'var(--mt)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 },
-  inputWrap: { position: 'relative' },
-  icoLeft:   { position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', fontSize: 15, color: 'var(--mt)', pointerEvents: 'none' },
-  input:     { width: '100%', background: 'var(--s2)', border: '1px solid var(--bdr)', borderRadius: 11, padding: '13px 15px 13px 40px', fontSize: 16, color: 'var(--tx)', fontFamily: 'var(--fb)', outline: 'none' },
-  loginBtn:  { width: '100%', padding: 15, background: 'var(--acc)', color: '#fff', border: 'none', borderRadius: 12, fontFamily: 'var(--fh)', fontSize: 16, fontWeight: 700, cursor: 'pointer', marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, boxShadow: '0 4px 20px rgba(26,94,245,.3)', letterSpacing: '.02em' },
-  divider:   { display: 'flex', alignItems: 'center', gap: 11, margin: '22px 0', color: 'var(--dim)', fontSize: 12 },
-  divLine:   { flex: 1, height: 1, background: 'var(--bdr)' },
-  demoGrid:  { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 },
-  demoBtn:   { display: 'flex', alignItems: 'center', gap: 10, padding: '11px 13px', background: 'var(--s2)', border: '1px solid var(--bdr)', borderRadius: 11, cursor: 'pointer', transition: 'all .2s', textAlign: 'left' },
-  dAvatar:   { width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 },
-  dName:     { fontSize: 13, fontWeight: 600, color: 'var(--tx)' },
-  dPass:     { fontSize: 10, color: 'var(--dim)', fontFamily: 'var(--fm)' },
-  dRole:     { fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', marginTop: 2 },
-};
+function Logo({ size = 40 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
+      <defs>
+        <linearGradient id="vg-login-logo" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#3b82f6" />
+          <stop offset="100%" stopColor="#1d4ed8" />
+        </linearGradient>
+      </defs>
+      <rect width="48" height="48" rx="12" fill="url(#vg-login-logo)" />
+      <g stroke="#fff" strokeWidth="3" strokeLinecap="round">
+        <path d="M17 9 14.5 39" />
+        <path d="M31 9l2.5 30" />
+        <path d="M16.4 17h15.4M15.9 24.5h16.4M15.4 32h17.4" opacity="0.92" />
+      </g>
+    </svg>
+  );
+}
 
 export default function LoginPage() {
   const { login, error, loading } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSubmit = async (e) => {
+  const submit = (e) => {
     e.preventDefault();
-    await login(username.trim().toLowerCase(), password);
+    if (username.trim() && password) login(username, password);
   };
 
-  const quickFill = (u, p) => { setUsername(u); setPassword(p); };
+  const quickFill = (account) => {
+    setUsername(account.username);
+    setPassword(account.password);
+  };
 
   return (
-    <div style={S.screen}>
-      {/* ── LEFT BRANDING PANEL ── */}
-      <div style={S.left}>
-        <div style={S.logoRow}>
-          <div style={S.logoIco}>🚆</div>
+    <div className="login">
+      {/* Product panel */}
+      <aside className="login-hero">
+        <div className="login-brand">
+          <Logo />
           <div>
-            <div style={S.brand}>RailGuard AI</div>
-            <div style={S.brandSub}>Predictive Maintenance System</div>
+            <div className="brand-name" style={{ fontSize: 19 }}>VigiRail</div>
+            <div className="brand-sub">Railway asset health platform</div>
           </div>
         </div>
-        <div style={S.headline}>
-          AI-Powered Safety for<br />
-          <span style={{ color: 'var(--blue)' }}>Indian Railways</span>
-        </div>
-        <div style={S.desc}>
-          Monitor train bogies, track sensors, and predict component failures before they
-          happen — across any route in real time, using machine learning.
-        </div>
-        <div style={S.statsGrid}>
-          {[['13,000+','Daily trains tracked'],['6/train','Bogies monitored'],['2s','Sensor update speed'],['99.2%','ML model accuracy']].map(([v,l]) => (
-            <div key={l} style={S.statCard}>
-              <div style={S.statVal}>{v}</div>
-              <div style={S.statLbl}>{l}</div>
+
+        <h1 className="login-headline">
+          Predict failures before they <span className="accent">happen</span>.
+        </h1>
+        <p className="login-desc">
+          VigiRail streams rolling-stock sensor telemetry, scores component
+          failure risk with a Random Forest model, and gives every role —
+          operator, engineer, inspector — exactly the view it needs.
+        </p>
+
+        <div className="login-stats">
+          {[
+            ['7 services', 'in the monitored fleet'],
+            ['4 sensors', 'per snapshot, 2 s cadence'],
+            ['200 trees', 'Random Forest ensemble'],
+            ['4 roles', 'granular access control'],
+          ].map(([value, label]) => (
+            <div key={label} className="login-stat">
+              <div className="login-stat-value">{value}</div>
+              <div className="login-stat-label">{label}</div>
             </div>
           ))}
         </div>
-        <div style={S.badges}>
-          {['✅ RDSO Standards','✅ Random Forest ML','✅ JWT Auth','✅ Role-Based Access'].map(b => (
-            <span key={b} style={S.badge}>{b}</span>
+
+        <div className="login-badges">
+          {[
+            { icon: 'shield', text: 'JWT + RBAC' },
+            { icon: 'activity', text: 'RDSO thresholds' },
+            { icon: 'cpu', text: 'Hold-out evaluated' },
+          ].map((badge) => (
+            <span key={badge.text} className="badge badge-info">
+              <Icon name={badge.icon} size={12} />
+              {badge.text}
+            </span>
           ))}
         </div>
-      </div>
+      </aside>
 
-      {/* ── RIGHT LOGIN FORM ── */}
-      <div style={S.right}>
-        <div style={S.formHdr}>
-          <div style={S.lockIco}>🔐</div>
-          <div style={S.formTitle}>Secure Login</div>
-          <div style={S.formSub}>Indian Railways Control Portal</div>
-          <div style={S.sslBadge}>🔒 SSL Encrypted · JWT Authenticated</div>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          {error && <div style={S.errBox}>❌ {error}</div>}
-
-          <div style={S.fieldGrp}>
-            <label style={S.label}>Username</label>
-            <div style={S.inputWrap}>
-              <span style={S.icoLeft}>👤</span>
-              <input style={S.input} value={username} placeholder="Enter username"
-                onChange={e => setUsername(e.target.value)}
-                onFocus={e => e.target.style.borderColor = 'var(--bdh)'}
-                onBlur={e  => e.target.style.borderColor = 'var(--bdr)'}
-              />
+      {/* Sign-in panel */}
+      <main className="login-panel">
+        <div className="login-card">
+          <div className="login-mobile-brand">
+            <Logo size={36} />
+            <div>
+              <div className="brand-name" style={{ fontSize: 17 }}>VigiRail</div>
+              <div className="brand-sub">Asset health platform</div>
             </div>
           </div>
 
-          <div style={S.fieldGrp}>
-            <label style={S.label}>Password</label>
-            <div style={S.inputWrap}>
-              <span style={S.icoLeft}>🔑</span>
-              <input style={S.input} type="password" value={password} placeholder="Enter password"
-                onChange={e => setPassword(e.target.value)}
-                onFocus={e => e.target.style.borderColor = 'var(--bdh)'}
-                onBlur={e  => e.target.style.borderColor = 'var(--bdr)'}
-              />
-            </div>
-          </div>
+          <h2 className="login-title">Sign in to your workspace</h2>
+          <p className="login-sub">Use your operator credentials to continue.</p>
 
-          <button type="submit" style={S.loginBtn} disabled={loading}>
-            {loading ? '⏳  Logging in…' : '🚆  Log In to Dashboard'}
-          </button>
-        </form>
+          <form className="login-form" onSubmit={submit}>
+            {error && (
+              <div className="login-error" role="alert">
+                <Icon name="alertTriangle" size={16} />
+                {error}
+              </div>
+            )}
 
-        <div style={S.divider}>
-          <span style={S.divLine} />
-          <span>Quick Demo Login</span>
-          <span style={S.divLine} />
-        </div>
-
-        <div style={S.demoGrid}>
-          {DEMO_ACCOUNTS.map(a => (
-            <div key={a.username} style={S.demoBtn}
-              onClick={() => quickFill(a.username, a.password)}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--bdh)'; e.currentTarget.style.background = 'var(--s3)'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--bdr)'; e.currentTarget.style.background = 'var(--s2)'; }}
-            >
-              <div style={{ ...S.dAvatar, background: a.color }}>{a.initials}</div>
-              <div>
-                <div style={S.dName}>{a.username}</div>
-                <div style={S.dPass}>{a.password}</div>
-                <div style={{ ...S.dRole, color: a.color }}>{a.role}</div>
+            <div className="field">
+              <label className="label" htmlFor="username">Username</label>
+              <div className="input-wrap">
+                <Icon name="user" size={16} />
+                <input
+                  id="username"
+                  className="input"
+                  value={username}
+                  autoComplete="username"
+                  placeholder="e.g. engineer"
+                  onChange={(e) => setUsername(e.target.value)}
+                />
               </div>
             </div>
-          ))}
+
+            <div className="field">
+              <label className="label" htmlFor="password">Password</label>
+              <div className="input-wrap">
+                <Icon name="shield" size={16} />
+                <input
+                  id="password"
+                  className="input"
+                  type="password"
+                  value={password}
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <button className="btn btn-primary btn-block btn-lg" type="submit" disabled={loading}>
+              {loading ? (
+                'Signing in…'
+              ) : (
+                <>
+                  <Icon name="logout" size={16} style={{ transform: 'scaleX(-1)' }} />
+                  Sign in
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="divider">Demo accounts — tap to fill</div>
+
+          <div className="demo-grid">
+            {DEMO_ACCOUNTS.map((account) => (
+              <button
+                key={account.username}
+                type="button"
+                className="demo-btn"
+                onClick={() => quickFill(account)}
+              >
+                <span className="avatar" style={{ background: roleColor(account.role), width: 30, height: 30, fontSize: 11 }}>
+                  {account.username.slice(0, 2).toUpperCase()}
+                </span>
+                <span>
+                  <span className="demo-name">{account.username}</span>
+                  <br />
+                  <span className="demo-pass">{account.password}</span>
+                  <br />
+                  <span className="demo-role" style={{ color: roleColor(account.role) }}>
+                    {account.role}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <p className="login-foot">
+            VigiRail demo environment · data is simulated for evaluation
+          </p>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

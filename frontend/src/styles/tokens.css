@@ -1,0 +1,61 @@
+/* ════════════════════════════════════════════════════════════════
+   VigiRail — design tokens
+   ════════════════════════════════════════════════════════════════ */
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --bg: #0a0f1a;
+  --bg-grad: radial-gradient(1100px 520px at 72% -8%, rgba(59, 130, 246, 0.09), transparent 62%);
+  --surface-1: #101a2c;
+  --surface-2: #15213a;
+  --surface-3: #1b2a49;
+  --surface-inset: #0c1424;
+
+  /* Borders */
+  --border: rgba(148, 163, 184, 0.14);
+  --border-strong: rgba(148, 163, 184, 0.28);
+
+  /* Text */
+  --text: #e6edf7;
+  --text-dim: #94a5be;
+  --text-faint: #667a96;
+
+  /* Brand */
+  --accent: #3b82f6;
+  --accent-2: #60a5fa;
+  --accent-strong: #2563eb;
+  --accent-soft: rgba(59, 130, 246, 0.13);
+  --accent-border: rgba(59, 130, 246, 0.35);
+
+  /* Status */
+  --green: #34d399;
+  --green-soft: rgba(52, 211, 153, 0.11);
+  --green-border: rgba(52, 211, 153, 0.32);
+  --amber: #fbbf24;
+  --amber-soft: rgba(251, 191, 36, 0.1);
+  --amber-border: rgba(251, 191, 36, 0.32);
+  --red: #f87171;
+  --red-soft: rgba(248, 113, 113, 0.1);
+  --red-border: rgba(248, 113, 113, 0.34);
+
+  /* Radii, shadows, motion */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-pill: 999px;
+  --shadow-1: 0 1px 2px rgba(2, 8, 20, 0.4);
+  --shadow-2: 0 10px 30px rgba(2, 8, 20, 0.45);
+  --ring: 0 0 0 3px rgba(59, 130, 246, 0.25);
+  --ease: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Type */
+  --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Layout */
+  --sidebar-w: 232px;
+  --topbar-h: 60px;
+  --bottomnav-h: 64px;
+  --content-max: 1320px;
+}

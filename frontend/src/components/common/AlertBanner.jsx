@@ -1,31 +1,46 @@
-/** Full-width alert banner that changes with sensor state */
+/** Global health banner — mirrors the current telemetry state. */
 import React from 'react';
 import { useSensor } from '../../context/SensorContext';
+import Icon from '../Icon';
+import { stateClass, stateDesc } from '../../lib/helpers';
+
+const TONE = {
+  good: { icon: 'checkCircle', label: 'All systems nominal' },
+  warn: { icon: 'alertTriangle', label: 'Attention required' },
+  danger: { icon: 'alertTriangle', label: 'Critical condition' },
+};
 
 export default function AlertBanner() {
-  const { data, simMode } = useSensor();
-  const state = simMode ? 'danger' : (data?.state || 'good');
+  const { data, simulating, error } = useSensor();
 
-  const cfg = {
-    good:   { bg: 'var(--bluedim)', bdr: 'rgba(65,153,255,.3)', col: 'var(--blue)', ico: 'ℹ️',  txt: `✅ All systems normal. Train ${data?.train_id || '—'} is in good health. Sensors updating every 2 seconds.` },
-    warn:   { bg: 'var(--ybg)',     bdr: 'var(--ybd)',           col: 'var(--y)',    ico: '⚠️', txt: '⚠️ Attention: Elevated readings detected. Schedule maintenance within 48 hours.' },
-    danger: { bg: 'var(--rbg)',     bdr: 'var(--rbd)',           col: '#ff9090',     ico: '🚨', txt: simMode ? '🚨 FAILURE SIMULATION ACTIVE — All sensors are in danger zone. Immediate inspection required!' : `🚨 CRITICAL: Sensors exceeded safe limits. Vibration=${data?.sensors?.vibration} mm/s, Temp=${data?.sensors?.temperature}°C` },
-  };
-  const c = cfg[state] || cfg.good;
+  if (error) {
+    return (
+      <div className="banner banner-danger">
+        <Icon name="wifiOff" size={18} />
+        <span className="banner-text">
+          Backend unreachable
+          <span className="banner-sub">{error} — retrying every 2 seconds.</span>
+        </span>
+      </div>
+    );
+  }
+
+  const state = simulating ? 'danger' : data?.state || 'good';
+  const tone = TONE[state];
+  const detail = simulating
+    ? 'Failure simulation is active — sensor values are being driven into the danger zone.'
+    : stateDesc[state];
 
   return (
-    <div style={{
-      background: c.bg, border: `1px solid ${c.bdr}`,
-      borderRadius: 12, padding: '14px 20px',
-      marginBottom: 18, display: 'flex',
-      alignItems: 'flex-start', gap: 12,
-      fontSize: 15, fontWeight: 500, color: c.col,
-      lineHeight: 1.5,
-      animation: state === 'danger' ? 'danger .5s ease' : 'none',
-      transition: 'all .4s',
-    }}>
-      <span style={{ fontSize: 20, flexShrink: 0 }}>{c.ico}</span>
-      <span>{c.txt}</span>
+    <div className={`banner banner-${state} ${stateClass(state)}`}>
+      <Icon name={tone.icon} size={18} />
+      <span className="banner-text">
+        {tone.label}
+        <span className="banner-sub">
+          {detail}
+          {data ? ` Train ${data.train_id} · updated just now.` : ''}
+        </span>
+      </span>
     </div>
   );
 }
