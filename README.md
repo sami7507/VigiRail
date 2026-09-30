@@ -243,6 +243,6 @@ MIT — see [LICENSE](LICENSE).
 ## Author
 <div align="center">
 
-Made with 💗 by <b>Sami Khan</b> · <a href="mailto:sami757007@gmail.com">sami757007@gmail.com</a> · <a href="https://www.linkedin.com/in/sami7507/" target="_blank">LinkedIn</a> · <b>VigiRail</b>
+Made with 💗 by <b>Sami</b> · <a href="mailto:sami757007@gmail.com">sami757007@gmail.com</a> · <a href="https://www.linkedin.com/in/sami7507/" target="_blank">LinkedIn</a> · <b>VigiRail</b>
 
 </div>
