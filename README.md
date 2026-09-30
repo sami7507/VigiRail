@@ -241,5 +241,5 @@ Interactive docs: **`/docs`** (Swagger UI). Core endpoints:
 MIT — see [LICENSE](LICENSE).
 
 <div align="center">
-Made with FastAPI, React and scikit-learn · <b>VigiRail</b>
+Made with ❤️ by Sami · <b>VigiRail</b>
 </div>
